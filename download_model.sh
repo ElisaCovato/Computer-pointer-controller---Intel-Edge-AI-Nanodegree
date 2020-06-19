@@ -6,7 +6,7 @@ script_download="/opt/intel/openvino/deployment_tools/open_model_zoo/tools/downl
 
 face_detection="face-detection-adas-0001"
 head_position="head-pose-estimation-adas-0001"
-facial_landmark="facial-landmarks-35-adas-0002"
+facial_landmark="landmarks-regression-retail-0009"
 gaze_estimation="gaze-estimation-adas-0002"
 
 

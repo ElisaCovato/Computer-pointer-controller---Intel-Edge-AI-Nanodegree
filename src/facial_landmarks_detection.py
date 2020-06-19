@@ -1,6 +1,7 @@
 import logging as log
 import cv2
 import sys
+import numpy as np
 from openvino.inference_engine import IECore
 
 class LandmarksDetectionModel:
@@ -87,7 +88,7 @@ class LandmarksDetectionModel:
             outputs = self.infer_request_handle.outputs[self.output_blob]
             eyes_coords, crop_left, crop_right = self.preprocess_output(outputs, image)
 
-        return eyes_coords, crop_left, crop_right
+        return eyes_coords,crop_left, crop_right
 
     def check_model(self):
         '''
@@ -124,18 +125,22 @@ class LandmarksDetectionModel:
 
         w = image.shape[1]
         h = image.shape[0]
+        outputs = outputs[0]
 
-        eyes_coords = [outputs[0][[0, 2, 4, 6]] * w , # x values
-                       outputs[0][[1, 3, 5, 7]] * h ]  # y values
+        xl, yl = int(outputs[0][0][0] * w), int(outputs[1][0][0] * h)
+        xr, yr = int(outputs[2][0][0] * w), int(outputs[3][0][0] * h)
+        eyes_coords = [xl, yl, xr, yr]
 
-        dl = int((eyes_coords[0][0] - eyes_coords[0][1]))
-        dr = int((eyes_coords[0][3] - eyes_coords[0][2]))
-        left_eye = [int(eyes_coords[0][0] + dl / 2), int(eyes_coords[1][0] - dl),
-                    int(eyes_coords[0][1] - dl / 2), int(eyes_coords[1][1] + dl)]
-        right_eye = [int(eyes_coords[0][2] - dr / 2), int(eyes_coords[1][2] - dr),
-                     int(eyes_coords[0][3] + dr / 2), int(eyes_coords[1][3] + dr)]
 
-        crop_left = image[left_eye[1]:left_eye[3], left_eye[0]:left_eye[2]]
-        crop_right = image[right_eye[1]:right_eye[3], right_eye[0]:right_eye[2]]
+        # Using the fact that eyes take 1/5 of your face width
+        # define bounding boxes around the eyes according to this
+        square_size = int(w/10)
+        left_eye_box = [xl - square_size, yl - square_size, xl + square_size, yl + square_size]
+        right_eye_box = [xr - square_size, yr - square_size, xr + square_size, yr + square_size]
+
+
+        crop_left = image[left_eye_box[1]:left_eye_box[3], left_eye_box[0]:left_eye_box[2]]
+        crop_right = image[right_eye_box[1]:right_eye_box[3], right_eye_box[0]:right_eye_box[2]]
+
         return eyes_coords, crop_left, crop_right
 

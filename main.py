@@ -111,19 +111,23 @@ def main():
                               (145, 50, 255), 2)
 
             # 2a: Detect left and right eye
-            eyes_coords, crop_left, crop_right = lm.predict(crop_face.copy())
+            eyes_coords,crop_left, crop_right = lm.predict(crop_face.copy())
             # Draw eyes detection if applicable
             if 'lm' in args.flags_preview:
-                dl = int((eyes_coords[0][0] - eyes_coords[0][1]))
-                dr = int((eyes_coords[0][3] - eyes_coords[0][2]))
-                left_eye = [
-                    (int(eyes_coords[0][0] + dl / 2 + face_coords[0]), int(eyes_coords[1][0] - dl + face_coords[1])),
-                    (int(eyes_coords[0][1] - dl / 2 + face_coords[0]), int(eyes_coords[1][1] + dl + face_coords[1]))]
-                right_eye = [
-                    (int(eyes_coords[0][2] - dr / 2 + face_coords[0]), int(eyes_coords[1][2] - dr + face_coords[1])),
-                    (int(eyes_coords[0][3] + dr / 2 + face_coords[0]), int(eyes_coords[1][3] + dr + face_coords[1]))]
-                cv2.rectangle(preview, left_eye[0], left_eye[1], (200, 10, 10), 2)
-                cv2.rectangle(preview, right_eye[0], right_eye[1], (200, 10, 10), 2)
+                square_size = int(crop_face.shape[0]/10)
+                # Draw left yes bounding box
+                xl_min, yl_min = eyes_coords[0] + face_coords[0] - square_size, eyes_coords[1] + face_coords[1] - square_size
+                xl_max, yl_max = eyes_coords[0] + face_coords[0] + square_size, eyes_coords[1] + face_coords[1] + square_size
+                cv2.rectangle(preview, (xl_min, yl_min), (xl_max, yl_max), (200, 10, 10), 2)
+                # Draw right eye bounding box
+                xr_min, yr_min = eyes_coords[2] + face_coords[0] - square_size, eyes_coords[3] + face_coords[
+                    1] - square_size
+                xr_max, yr_max = eyes_coords[2] + face_coords[0] + square_size, eyes_coords[3] + face_coords[
+                    1] + square_size
+                cv2.rectangle(preview, (xr_min, yr_min), (xr_max, yr_max), (200, 10, 10), 2)
+
+            # 2b: Estimate head pose
+
 
         cv2.imshow("Preview", preview)
 
