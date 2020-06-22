@@ -1,6 +1,7 @@
 import logging as log
 import cv2
 import sys
+import numpy as np
 from openvino.inference_engine import IECore
 
 class LandmarksDetectionModel:
@@ -72,22 +73,27 @@ class LandmarksDetectionModel:
         '''
         This method is meant for running predictions on the input image.
         '''
-        # Create input image to feed into the network
-        net_input = {self.input_blob: self.preprocess_input(image)}
+        if np.all(np.array(image.shape)):
+            # Create input image to feed into the network
+            net_input = {self.input_blob: self.preprocess_input(image)}
 
-        # Start inference. Infer mode (async/sync) is input by user
-        if self.async_infer:
-            self.infer_request_handle = self.exec_network.start_async(request_id = 0, inputs = net_input)
+            # Start inference. Infer mode (async/sync) is input by user
+            if self.async_infer:
+                self.infer_request_handle = self.exec_network.start_async(request_id = 0, inputs = net_input)
+            else:
+                self.infer_request_handle = self.exec_network.infer(inputs = net_input)
+
+            # Wait for the result of the inference
+            if self.exec_network.requests[0].wait(-1) == 0:
+                # Get result of the inference request
+                outputs = self.infer_request_handle.outputs[self.output_blob]
+                eyes_coords, crop_left, crop_right = self.preprocess_output(outputs, image)
         else:
-            self.infer_request_handle = self.exec_network.infer(inputs = net_input)
+            eyes_coords = []
+            crop_left = []
+            crop_right = []
 
-        # Wait for the result of the inference
-        if self.exec_network.requests[0].wait(-1) == 0:
-            # Get result of the inference request
-            outputs = self.infer_request_handle.outputs[self.output_blob]
-            eyes_coords, crop_left, crop_right = self.preprocess_output(outputs, image)
-
-        return eyes_coords,crop_left, crop_right
+        return eyes_coords, crop_left, crop_right
 
     def check_model(self):
         '''
@@ -128,6 +134,7 @@ class LandmarksDetectionModel:
 
         xl, yl = int(outputs[0][0][0] * w), int(outputs[1][0][0] * h)
         xr, yr = int(outputs[2][0][0] * w), int(outputs[3][0][0] * h)
+
         eyes_coords = [xl, yl, xr, yr]
 
 

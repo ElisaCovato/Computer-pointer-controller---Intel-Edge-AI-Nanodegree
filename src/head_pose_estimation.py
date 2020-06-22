@@ -123,12 +123,12 @@ class HeadPoseEstimationModel:
         '''
 
         # Get head pose estimation results
-        angle_p_fc = outputs["angle_p_fc"][0][0]
         angle_y_fc = outputs["angle_y_fc"][0][0]
+        angle_p_fc = outputs["angle_p_fc"][0][0]
         angle_r_fc = outputs["angle_r_fc"][0][0]
 
 
-        pose_angles = [angle_p_fc, angle_y_fc, angle_r_fc]
+        pose_angles = [angle_y_fc, angle_p_fc, angle_r_fc]
 
         return pose_angles
 

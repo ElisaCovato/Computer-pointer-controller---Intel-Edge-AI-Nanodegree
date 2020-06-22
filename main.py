@@ -6,6 +6,7 @@ from math import cos, sin, pi
 from argparse import ArgumentParser
 from src.input_feeder import InputFeeder
 from src.face_detection import FaceDetectionModel
+from src.gaze_estimation import GazeEstimationModel
 from src.head_pose_estimation import HeadPoseEstimationModel
 from src.facial_landmarks_detection import LandmarksDetectionModel
 
@@ -25,8 +26,8 @@ def build_argparser():
                          help="Path to folder with a pre-trained 'Head Pose Detection Model'. . E.g. <path_dir>/<model_name>")
     parser.add_argument("-lm", "--landmarks_model", required=True, type=str,
                           help="Path to folder with a pre-trained 'Facial Landmarks Detection Model'. . E.g. <path_dir>/<model_name>")
-    # parser.add_argument("-gm", "--gaze_model", required=True, type=str,
-    #                     help="Path to folder with a pre-trained 'Gaze Estimation Model'. . E.g. <path_dir>/<model_name>")
+    parser.add_argument("-gm", "--gaze_model", required=True, type=str,
+                         help="Path to folder with a pre-trained 'Gaze Estimation Model'. . E.g. <path_dir>/<model_name>")
     parser.add_argument("-i", "--input", required=True, type=str,
                         help="Path to video file or image. Enter 'cam' for webcam stream.")
     parser.add_argument("-l", "--extensions", type=str, default=None,
@@ -90,7 +91,7 @@ def main():
                                  device=args.device,
                                  extensions=args.extensions,
                                  async_infer=args.async_mode)
-    pm = GazeEstimationModel(model_name=models['GM'],
+    gm = GazeEstimationModel(model_name=models['GM'],
                                  device=args.device,
                                  extensions=args.extensions,
                                  async_infer=args.async_mode)
@@ -146,8 +147,8 @@ def main():
             # Draw head pose estimation if applicable
             if 'pm' in args.flags_preview:
                 # Transform Tait-Bryan angles to radians
-                pitch = angle_poses[0] * pi/180
-                yaw = angle_poses[1] * pi/180
+                pitch = angle_poses[1] * pi/180
+                yaw = angle_poses[0] * pi/180
                 roll = angle_poses[2] * pi/180
 
 
@@ -210,7 +211,26 @@ def main():
                 p2 = (int(xp2), int(yp2))
                 cv2.line(preview, p1, p2, (255, 0, 0), 2) # z-axis
                 cv2.circle(preview, p2, 3, (255, 0, 0), 2)
+
             # 3: Get Gaze Estimation
+            if len(crop_left) !=0 and len(crop_right) != 0:
+                gaze = gm.predict(crop_left.copy(), crop_right.copy(), angle_poses.copy())
+                # Draw gaze estimation if applicable
+                if len(gaze) != 0  and 'gm' in args.flags_preview:
+                 left_xcenter = int(eyes_coords[0] + face_coords[0])
+                 left_ycenter = int(eyes_coords[1] + face_coords[1])
+                 right_xcenter = int(eyes_coords[2] + face_coords[0])
+                 right_ycenter = int(eyes_coords[3] + face_coords[1])
+
+                 gaze_lx = (gaze[0] * 0.4 * crop_face.shape[1]) + left_xcenter
+                 gaze_ly = (-gaze[1] * 0.4 * crop_face.shape[0]) + left_ycenter
+                 gp_l = (int(gaze_lx), int(gaze_ly))
+                 gaze_rx = (gaze[0] * 0.4 * crop_face.shape[1]) + right_xcenter
+                 gaze_ry = (-gaze[1] * 0.4 * crop_face.shape[0]) + right_ycenter
+                 gp_r = (int(gaze_rx), int(gaze_ry))
+                 cv2.arrowedLine(preview, (left_xcenter, left_ycenter), gp_l, (230, 216, 173), 2)
+                 cv2.arrowedLine(preview, (right_xcenter, right_ycenter), gp_r, (230, 216, 173), 2)
+
 
 
         cv2.imshow("Preview", preview)
