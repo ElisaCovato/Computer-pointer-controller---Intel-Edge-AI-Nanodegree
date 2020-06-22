@@ -1,10 +1,15 @@
 import os
 import cv2
 import logging as log
+import numpy as np
+from math import cos, sin, pi
 from argparse import ArgumentParser
-from src.face_detection import FaceDetectionModel
-from src.facial_landmarks_detection import LandmarksDetectionModel
 from src.input_feeder import InputFeeder
+from src.face_detection import FaceDetectionModel
+from src.head_pose_estimation import HeadPoseEstimationModel
+from src.facial_landmarks_detection import LandmarksDetectionModel
+
+
 
 
 def build_argparser():
@@ -16,8 +21,8 @@ def build_argparser():
     parser = ArgumentParser()
     parser.add_argument("-fm", "--face_model", required=True, type=str,
                         help="Path to folder with a pre-trained 'Face Detection Model'. E.g. <path_dir>/<model_name>")
-    # parser.add_argument("-pm", "--pose_model", required=True, type=str,
-    #                     help="Path to folder with a pre-trained 'Head Pose Detection Model'. . E.g. <path_dir>/<model_name>")
+    parser.add_argument("-pm", "--pose_model", required=True, type=str,
+                         help="Path to folder with a pre-trained 'Head Pose Detection Model'. . E.g. <path_dir>/<model_name>")
     parser.add_argument("-lm", "--landmarks_model", required=True, type=str,
                           help="Path to folder with a pre-trained 'Facial Landmarks Detection Model'. . E.g. <path_dir>/<model_name>")
     # parser.add_argument("-gm", "--gaze_model", required=True, type=str,
@@ -28,7 +33,7 @@ def build_argparser():
                         help="MKLDNN (CPU)-targeted custom layers."
                              "Absolute path to a shared library with the"
                              "kernels impl")
-    parser.add_argument("-f", "--flags_preview", nargs="+", default=[],
+    parser.add_argument("-prev", "--flags_preview", nargs="+", default=[],
                         help="Show models detection outputs. Add 'fm' for face detection,"
                              "lm for landmarks, pm for head pose, gm for gaze estimation")
     parser.add_argument("-prob", "--prob_threshold", type=float, default=0.5,
@@ -63,9 +68,9 @@ def main():
 
     # Check models
     models = {'FM': args.face_model,
-              'LM': args.landmarks_model}
-    # 'PM': args.pose_model,
-    # 'GM': args.gaze_model}
+              'LM': args.landmarks_model,
+              'PM': args.pose_model,
+              'GM': args.gaze_model}
     for model in models.keys():
         if not os.path.isfile(models[model] + '.xml'):
             log.error("Unable to find specified '" + models[model].split('/')[-1] + "' model")
@@ -81,19 +86,29 @@ def main():
                             device=args.device,
                             extensions=args.extensions,
                             async_infer=args.async_mode)
+    pm = HeadPoseEstimationModel(model_name=models['PM'],
+                                 device=args.device,
+                                 extensions=args.extensions,
+                                 async_infer=args.async_mode)
+    pm = GazeEstimationModel(model_name=models['GM'],
+                                 device=args.device,
+                                 extensions=args.extensions,
+                                 async_infer=args.async_mode)
 
     fm.load_model()
     lm.load_model()
+    pm.load_model()
+    gm.load_model()
 
-    for frame in feed.next_batch():
-        if frame is None:
+    for preview in feed.next_batch():
+        if preview is None:
             break
         key_pressed = cv2.waitKey(60)
-        preview = frame.copy()
+        preview = preview.copy()
         prev_w, prev_h = preview.shape[1], preview.shape[0]
 
         # 1: Detect face
-        face_coords, crop_face = fm.predict(frame.copy())
+        face_coords, crop_face = fm.predict(preview.copy())
         # If face is not detect show a message:
         if len(face_coords) == 0:
             text = "No face detected"
@@ -111,10 +126,10 @@ def main():
                               (145, 50, 255), 2)
 
             # 2a: Detect left and right eye
-            eyes_coords,crop_left, crop_right = lm.predict(crop_face.copy())
+            eyes_coords, crop_left, crop_right = lm.predict(crop_face.copy())
             # Draw eyes detection if applicable
             if 'lm' in args.flags_preview:
-                square_size = int(crop_face.shape[0]/10)
+                square_size = int(crop_face.shape[1]/10 + 5 )
                 # Draw left yes bounding box
                 xl_min, yl_min = eyes_coords[0] + face_coords[0] - square_size, eyes_coords[1] + face_coords[1] - square_size
                 xl_max, yl_max = eyes_coords[0] + face_coords[0] + square_size, eyes_coords[1] + face_coords[1] + square_size
@@ -127,6 +142,75 @@ def main():
                 cv2.rectangle(preview, (xr_min, yr_min), (xr_max, yr_max), (200, 10, 10), 2)
 
             # 2b: Estimate head pose
+            angle_poses = pm.predict(crop_face.copy())
+            # Draw head pose estimation if applicable
+            if 'pm' in args.flags_preview:
+                # Transform Tait-Bryan angles to radians
+                pitch = angle_poses[0] * pi/180
+                yaw = angle_poses[1] * pi/180
+                roll = angle_poses[2] * pi/180
+
+
+                xcenter = int(face_coords[0] + crop_face.shape[1]/2)
+                ycenter = int(face_coords[1] + crop_face.shape[0]/2)
+
+
+                # Create axis where to project angles
+                # ref1: https://www.learnopencv.com/rotation-matrix-to-euler-angles/
+                # ref2: https://github.com/opencv/open_model_zoo/blob/master/demos/interactive_face_detection_demo/visualizer.cpp
+                scale = 50
+                focal_len = 950.0
+                xaxis = np.array(([1 * scale, 0, 0]), dtype='float32').reshape(3, 1)
+                yaxis = np.array(([0, -1 * scale, 0]), dtype='float32').reshape(3, 1)
+                zaxis = np.array(([0, 0, -1 * scale]), dtype='float32').reshape(3, 1)
+                zaxis1 = np.array(([0, 0, 1 * scale]), dtype='float32').reshape(3, 1)
+
+
+                # Translation matrix
+                t = np.array(([0, 0, 0]), dtype='float32').reshape(3, 1)
+                t[2] = focal_len
+
+                # Construct rotation matrices according to https://ntrs.nasa.gov/archive/nasa/casi.ntrs.nasa.gov/19770024290.pdf
+                Rx = np.array([[1, 0, 0],
+                               [0, cos(pitch), -sin(pitch)],
+                               [0, sin(pitch), cos(pitch)]])
+                Ry = np.array([[cos(yaw), 0, -sin(yaw)],
+                               [0, 1, 0],
+                               [sin(yaw), 0, cos(yaw)]])
+                Rz = np.array([[cos(roll), -sin(roll), 0],
+                               [sin(roll), cos(roll), 0],
+                               [0, 0, 1]])
+
+
+                R = Rz @ Ry @ Rx
+
+
+                # Rotate axis
+                xaxis = np.dot(R, xaxis) + t
+                yaxis = np.dot(R, yaxis) + t
+                zaxis = np.dot(R, zaxis) + t
+                zaxis1 = np.dot(R, zaxis1) + t
+
+                # Gets projected coordinates & draw lines
+                xp2 = (xaxis[0] / xaxis[2] * focal_len) + xcenter
+                yp2 = (xaxis[1] / xaxis[2] * focal_len) + ycenter
+                p2 = (int(xp2), int(yp2))
+                cv2.line(preview, (xcenter, ycenter), p2, (0, 0, 255), 2) # x-axis
+
+                xp2 = (yaxis[0] / yaxis[2] * focal_len) + xcenter
+                yp2 = (yaxis[1] / yaxis[2] * focal_len) + ycenter
+                p2 = (int(xp2), int(yp2))
+                cv2.line(preview, (xcenter, ycenter), p2, (0, 255, 0), 2) # y-axis
+
+                xp1 = (zaxis1[0] / zaxis1[2]* focal_len) + xcenter
+                yp1 = (zaxis1[1] / zaxis1[2]* focal_len) + ycenter
+                p1 = (int(xp1), int(yp1))
+                xp2 = (zaxis[0] / zaxis[2]* focal_len) + xcenter
+                yp2 = (zaxis[1] / zaxis[2]* focal_len) + ycenter
+                p2 = (int(xp2), int(yp2))
+                cv2.line(preview, p1, p2, (255, 0, 0), 2) # z-axis
+                cv2.circle(preview, p2, 3, (255, 0, 0), 2)
+            # 3: Get Gaze Estimation
 
 
         cv2.imshow("Preview", preview)

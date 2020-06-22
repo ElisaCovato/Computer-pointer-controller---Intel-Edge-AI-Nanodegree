@@ -1,7 +1,6 @@
 import logging as log
 import cv2
 import sys
-import numpy as np
 from openvino.inference_engine import IECore
 
 class LandmarksDetectionModel:
