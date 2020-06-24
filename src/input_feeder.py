@@ -1,5 +1,4 @@
 import cv2
-from numpy import ndarray
 
 
 class InputFeeder:
