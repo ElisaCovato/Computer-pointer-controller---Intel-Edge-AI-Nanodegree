@@ -1,16 +1,16 @@
 import os
 import cv2
+import sys
 import logging as log
 import numpy as np
 from math import cos, sin, pi
 from argparse import ArgumentParser
+from src.mouse_controller import MouseController
 from src.input_feeder import InputFeeder
 from src.face_detection import FaceDetectionModel
 from src.gaze_estimation import GazeEstimationModel
 from src.head_pose_estimation import HeadPoseEstimationModel
 from src.facial_landmarks_detection import LandmarksDetectionModel
-
-
 
 
 def build_argparser():
@@ -23,11 +23,11 @@ def build_argparser():
     parser.add_argument("-fm", "--face_model", required=True, type=str,
                         help="Path to folder with a pre-trained 'Face Detection Model'. E.g. <path_dir>/<model_name>")
     parser.add_argument("-pm", "--pose_model", required=True, type=str,
-                         help="Path to folder with a pre-trained 'Head Pose Detection Model'. . E.g. <path_dir>/<model_name>")
+                        help="Path to folder with a pre-trained 'Head Pose Detection Model'. . E.g. <path_dir>/<model_name>")
     parser.add_argument("-lm", "--landmarks_model", required=True, type=str,
-                          help="Path to folder with a pre-trained 'Facial Landmarks Detection Model'. . E.g. <path_dir>/<model_name>")
+                        help="Path to folder with a pre-trained 'Facial Landmarks Detection Model'. . E.g. <path_dir>/<model_name>")
     parser.add_argument("-gm", "--gaze_model", required=True, type=str,
-                         help="Path to folder with a pre-trained 'Gaze Estimation Model'. . E.g. <path_dir>/<model_name>")
+                        help="Path to folder with a pre-trained 'Gaze Estimation Model'. . E.g. <path_dir>/<model_name>")
     parser.add_argument("-i", "--input", required=True, type=str,
                         help="Path to video file or image. Enter 'cam' for webcam stream.")
     parser.add_argument("-l", "--extensions", type=str, default=None,
@@ -54,8 +54,10 @@ def main():
 
     # Get input
     input_path = args.input
+    flip = False
     if input_path.lower() == 'cam':
         feed = InputFeeder(input_type='cam')
+        flip = True
     else:
         if ((input_path.endswith('.jpg') or input_path.endswith('.bmp')) and os.path.isfile(input_path)):
             feed = InputFeeder('image', input_path)
@@ -84,27 +86,32 @@ def main():
                             extensions=args.extensions,
                             async_infer=args.async_mode)
     lm = LandmarksDetectionModel(model_name=models['LM'],
-                            device=args.device,
-                            extensions=args.extensions,
-                            async_infer=args.async_mode)
+                                 device=args.device,
+                                 extensions=args.extensions,
+                                 async_infer=args.async_mode)
     pm = HeadPoseEstimationModel(model_name=models['PM'],
                                  device=args.device,
                                  extensions=args.extensions,
                                  async_infer=args.async_mode)
     gm = GazeEstimationModel(model_name=models['GM'],
-                                 device=args.device,
-                                 extensions=args.extensions,
-                                 async_infer=args.async_mode)
+                             device=args.device,
+                             extensions=args.extensions,
+                             async_infer=args.async_mode)
 
     fm.load_model()
     lm.load_model()
     pm.load_model()
     gm.load_model()
 
+    # Initialize mouse controller
+    mouse = MouseController(precision='high', speed='immediate')
+    # out = cv2.VideoWriter("test.mp4", cv2.VideoWriter_fourcc(*"MP4V"), 30,  (1920, 1080), True)
+    frame_count = 0
     for preview in feed.next_batch():
         if preview is None:
             break
         key_pressed = cv2.waitKey(60)
+        frame_count += 1
         preview = preview.copy()
         prev_w, prev_h = preview.shape[1], preview.shape[0]
 
@@ -115,9 +122,10 @@ def main():
             text = "No face detected"
             font = cv2.FONT_HERSHEY_COMPLEX
             textsize = cv2.getTextSize(text, font, 1, 2)[0]
-            textX, textY = int((prev_w - textsize[0])/2), int((prev_h + textsize[1])/2)
+            textX, textY = int((prev_w - textsize[0]) / 2), int((prev_h + textsize[1]) / 2)
             cv2.putText(preview, text, (textX, textY), font, 1, (200, 10, 10), 1)
-            cv2.rectangle(preview, (textX-10, textY-textsize[1]-10), (textX+textsize[0]+10, textY+10), (145, 50, 255), 2)
+            cv2.rectangle(preview, (textX - 10, textY - textsize[1] - 10), (textX + textsize[0] + 10, textY + 10),
+                          (145, 50, 255), 2)
 
         # If face is detect move on with next detections:
         else:
@@ -130,10 +138,12 @@ def main():
             eyes_coords, crop_left, crop_right = lm.predict(crop_face.copy())
             # Draw eyes detection if applicable
             if 'lm' in args.flags_preview:
-                square_size = int(crop_face.shape[1]/10 + 5 )
+                square_size = int(crop_face.shape[1] / 10 + 5)
                 # Draw left yes bounding box
-                xl_min, yl_min = eyes_coords[0] + face_coords[0] - square_size, eyes_coords[1] + face_coords[1] - square_size
-                xl_max, yl_max = eyes_coords[0] + face_coords[0] + square_size, eyes_coords[1] + face_coords[1] + square_size
+                xl_min, yl_min = eyes_coords[0] + face_coords[0] - square_size, eyes_coords[1] + face_coords[
+                    1] - square_size
+                xl_max, yl_max = eyes_coords[0] + face_coords[0] + square_size, eyes_coords[1] + face_coords[
+                    1] + square_size
                 cv2.rectangle(preview, (xl_min, yl_min), (xl_max, yl_max), (200, 10, 10), 2)
                 # Draw right eye bounding box
                 xr_min, yr_min = eyes_coords[2] + face_coords[0] - square_size, eyes_coords[3] + face_coords[
@@ -147,14 +157,12 @@ def main():
             # Draw head pose estimation if applicable
             if 'pm' in args.flags_preview:
                 # Transform Tait-Bryan angles to radians
-                pitch = angle_poses[1] * pi/180
-                yaw = angle_poses[0] * pi/180
-                roll = angle_poses[2] * pi/180
+                pitch = angle_poses[1] * pi / 180
+                yaw = angle_poses[0] * pi / 180
+                roll = angle_poses[2] * pi / 180
 
-
-                xcenter = int(face_coords[0] + crop_face.shape[1]/2)
-                ycenter = int(face_coords[1] + crop_face.shape[0]/2)
-
+                xcenter = int(face_coords[0] + crop_face.shape[1] / 2)
+                ycenter = int(face_coords[1] + crop_face.shape[0] / 2)
 
                 # Create axis where to project angles
                 # ref1: https://www.learnopencv.com/rotation-matrix-to-euler-angles/
@@ -165,7 +173,6 @@ def main():
                 yaxis = np.array(([0, -1 * scale, 0]), dtype='float32').reshape(3, 1)
                 zaxis = np.array(([0, 0, -1 * scale]), dtype='float32').reshape(3, 1)
                 zaxis1 = np.array(([0, 0, 1 * scale]), dtype='float32').reshape(3, 1)
-
 
                 # Translation matrix
                 t = np.array(([0, 0, 0]), dtype='float32').reshape(3, 1)
@@ -182,9 +189,7 @@ def main():
                                [sin(roll), cos(roll), 0],
                                [0, 0, 1]])
 
-
                 R = Rz @ Ry @ Rx
-
 
                 # Rotate axis
                 xaxis = np.dot(R, xaxis) + t
@@ -196,48 +201,60 @@ def main():
                 xp2 = (xaxis[0] / xaxis[2] * focal_len) + xcenter
                 yp2 = (xaxis[1] / xaxis[2] * focal_len) + ycenter
                 p2 = (int(xp2), int(yp2))
-                cv2.line(preview, (xcenter, ycenter), p2, (0, 0, 255), 2) # x-axis
+                cv2.line(preview, (xcenter, ycenter), p2, (0, 0, 255), 2)  # x-axis
 
                 xp2 = (yaxis[0] / yaxis[2] * focal_len) + xcenter
                 yp2 = (yaxis[1] / yaxis[2] * focal_len) + ycenter
                 p2 = (int(xp2), int(yp2))
-                cv2.line(preview, (xcenter, ycenter), p2, (0, 255, 0), 2) # y-axis
+                cv2.line(preview, (xcenter, ycenter), p2, (0, 255, 0), 2)  # y-axis
 
-                xp1 = (zaxis1[0] / zaxis1[2]* focal_len) + xcenter
-                yp1 = (zaxis1[1] / zaxis1[2]* focal_len) + ycenter
+                xp1 = (zaxis1[0] / zaxis1[2] * focal_len) + xcenter
+                yp1 = (zaxis1[1] / zaxis1[2] * focal_len) + ycenter
                 p1 = (int(xp1), int(yp1))
-                xp2 = (zaxis[0] / zaxis[2]* focal_len) + xcenter
-                yp2 = (zaxis[1] / zaxis[2]* focal_len) + ycenter
+                xp2 = (zaxis[0] / zaxis[2] * focal_len) + xcenter
+                yp2 = (zaxis[1] / zaxis[2] * focal_len) + ycenter
                 p2 = (int(xp2), int(yp2))
-                cv2.line(preview, p1, p2, (255, 0, 0), 2) # z-axis
+                cv2.line(preview, p1, p2, (255, 0, 0), 2)  # z-axis
                 cv2.circle(preview, p2, 3, (255, 0, 0), 2)
 
             # 3: Get Gaze Estimation
-            if len(crop_left) !=0 and len(crop_right) != 0:
+            if len(crop_left) != 0 and len(crop_right) != 0:
                 gaze = gm.predict(crop_left.copy(), crop_right.copy(), angle_poses.copy())
                 # Draw gaze estimation if applicable
-                if len(gaze) != 0  and 'gm' in args.flags_preview:
-                 left_xcenter = int(eyes_coords[0] + face_coords[0])
-                 left_ycenter = int(eyes_coords[1] + face_coords[1])
-                 right_xcenter = int(eyes_coords[2] + face_coords[0])
-                 right_ycenter = int(eyes_coords[3] + face_coords[1])
+                if len(gaze) != 0 and 'gm' in args.flags_preview:
+                    left_xcenter = int(eyes_coords[0] + face_coords[0])
+                    left_ycenter = int(eyes_coords[1] + face_coords[1])
+                    right_xcenter = int(eyes_coords[2] + face_coords[0])
+                    right_ycenter = int(eyes_coords[3] + face_coords[1])
 
-                 gaze_lx = (gaze[0] * 0.4 * crop_face.shape[1]) + left_xcenter
-                 gaze_ly = (-gaze[1] * 0.4 * crop_face.shape[0]) + left_ycenter
-                 gp_l = (int(gaze_lx), int(gaze_ly))
-                 gaze_rx = (gaze[0] * 0.4 * crop_face.shape[1]) + right_xcenter
-                 gaze_ry = (-gaze[1] * 0.4 * crop_face.shape[0]) + right_ycenter
-                 gp_r = (int(gaze_rx), int(gaze_ry))
-                 cv2.arrowedLine(preview, (left_xcenter, left_ycenter), gp_l, (230, 216, 173), 2)
-                 cv2.arrowedLine(preview, (right_xcenter, right_ycenter), gp_r, (230, 216, 173), 2)
+                    gaze_lx = (gaze[0] * 0.4 * crop_face.shape[1]) + left_xcenter
+                    gaze_ly = (-gaze[1] * 0.4 * crop_face.shape[0]) + left_ycenter
+                    gp_l = (int(gaze_lx), int(gaze_ly))
+                    gaze_rx = (gaze[0] * 0.4 * crop_face.shape[1]) + right_xcenter
+                    gaze_ry = (-gaze[1] * 0.4 * crop_face.shape[0]) + right_ycenter
+                    gp_r = (int(gaze_rx), int(gaze_ry))
+                    cv2.arrowedLine(preview, (left_xcenter, left_ycenter), gp_l, (230, 216, 173), 2)
+                    cv2.arrowedLine(preview, (right_xcenter, right_ycenter), gp_r, (230, 216, 173), 2)
+
+                    # Move mouse
+                    if flip: # if it is a video cam stream, flip pointer direction
+                        mouse.move(-gaze[0], gaze[1])
+                    else:
+                        mouse.move(gaze[0], gaze[1])
 
 
-
+        # out.write(preview)
+        preview = cv2.resize(preview, (600, 600))
+        preview = cv2.flip(preview, 1)
         cv2.imshow("Preview", preview)
+        cv2.moveWindow("Preview", 70, 70)
+
 
         if key_pressed == 27:
             break
 
+    log.error("VideoStream ended...")
+    cv2.destroyAllWindows()
     feed.close()
 
 

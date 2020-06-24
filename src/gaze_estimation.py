@@ -83,7 +83,6 @@ class GazeEstimationModel:
                          self.input_blob[1]: self.preprocess_input(left_eye),
                          self.input_blob[2]: self.preprocess_input(right_eye)}
 
-            print(left_eye.shape)
             # Start inference. Infer mode (async/sync) is input by user
             if self.async_infer:
                 self.infer_request_handle = self.exec_network.start_async(request_id = 0, inputs = net_input)
