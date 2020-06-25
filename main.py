@@ -36,7 +36,15 @@ def build_argparser():
                              "kernels impl")
     parser.add_argument("-prev", "--flags_preview", nargs="+", default=[],
                         help="Show models detection outputs. Add 'fm' for face detection,"
-                             "lm for landmarks, pm for head pose, gm for gaze estimation")
+                             "lm for landmarks, pm for head pose, gm for gaze estimation,"
+                             "vo for video only output without models detection output. "
+                             "Flags needs to be separated by space.")
+    parser.add_argument("-m_prec", "--mouse_precision", type=str, default='high',
+                        help="Specify mouse precision (how much the mouse moves): 'high', 'medium', 'low'."
+                             "Default is high.")
+    parser.add_argument("-m_speed", "--mouse_speed", type=str, default='immediate',
+                        help="Specify mouse speed (how many secs before it moves): 'immediate'(0s), 'fast'(0.1s)," 
+                             "'medium'(0.5s) and 'slow'(1s). Default is immediate.")
     parser.add_argument("-prob", "--prob_threshold", type=float, default=0.5,
                         help="Probability threshold for detection filtering (0.5 by default)")
     parser.add_argument("-d", "--device", type=str, default='CPU',
@@ -66,7 +74,7 @@ def main():
             feed = InputFeeder('video', input_path)
         else:
             log.error("Specified input file does not exist")
-            exit(1)
+            sys.exit(1)
 
     feed.load_data()
 
@@ -78,7 +86,7 @@ def main():
     for model in models.keys():
         if not os.path.isfile(models[model] + '.xml'):
             log.error("Unable to find specified '" + models[model].split('/')[-1] + "' model")
-            exit(1)
+            sys.exit(1)
 
     # Load models
     fm = FaceDetectionModel(model_name=models['FM'],
@@ -104,8 +112,15 @@ def main():
     pm.load_model()
     gm.load_model()
 
+    # Check preview flags
+    if len(args.flags_preview) != 0:
+        for flag in args.flags_preview:
+            if not flag in ['lm', 'pm', 'fm', 'gm', 'vo']:
+                log.error("Flag '" + flag + "' is not a valid preview flag.")
+                sys.exit(1)
+
     # Initialize mouse controller
-    mouse = MouseController(precision='high', speed='immediate')
+    mouse = MouseController(precision=args.mouse_precision, speed=args.mouse_speed)
     # out = cv2.VideoWriter("test.mp4", cv2.VideoWriter_fourcc(*"MP4V"), 30,  (1920, 1080), True)
     for frame in feed.next_batch():
         if frame is None:
@@ -165,7 +180,8 @@ def main():
                     # Draw right eye gaze
                     preview.draw_eye_gaze(eyes_coord[2:4], face_coords, gaze, gaze_len)
 
-                    # Move mouse
+                # Move mouse
+                if len(gaze) != 0:
                     if flip:  # if it is a video cam stream, flip pointer direction
                         mouse.move(-gaze[0], gaze[1])
                     else:
