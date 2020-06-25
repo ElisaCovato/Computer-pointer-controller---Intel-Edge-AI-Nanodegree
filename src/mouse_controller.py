@@ -22,17 +22,23 @@ class MouseController:
 
         # Start pointer from center screen
         pyautogui.PAUSE = 0
+        pyautogui.FAILSAFE = False
         pyautogui.moveTo(self.xc, self.yc)
 
 
     def move(self, x, y):
-        current_pos = pyautogui.position() # current mouse position on screen
-        rel_x = x * self.precision # relative movement on x axis
-        rel_y = -1 * y * self.precision # relative movement on y axis
-        new_pos = (current_pos[0] + rel_x, current_pos[1] + rel_y ) # new potential position
+        current_pos = pyautogui.position()  # current mouse position on screen
+        rel_x = x * self.precision  # relative movement on x axis
+        rel_y = -1 * y * self.precision  # relative movement on y axis
+        new_pos = (current_pos[0] + rel_x, current_pos[1] + rel_y)  # new potential position
 
         # If the new position is still inside the screen, move the pointer
-        # otherwise leave the pointer where it is
-
+        # If only one of the new coordinates position, move just along that coordinate axsis
+        # Otherwise don't move
         if pyautogui.onScreen(new_pos):
             pyautogui.moveRel(rel_x, rel_y, duration=self.speed)
+        elif 0 <= new_pos[0] <= pyautogui.size()[0]:
+            pyautogui.moveRel(rel_x, 0, duration=self.speed)
+        elif 0 <= new_pos[1] <= pyautogui.size()[1]:
+            pyautogui.moveRel(0, rel_y, duration=self.speed)
+
