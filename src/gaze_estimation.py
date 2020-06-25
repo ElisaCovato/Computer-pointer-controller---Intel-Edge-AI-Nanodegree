@@ -4,6 +4,7 @@ import sys
 import numpy as np
 from openvino.inference_engine import IECore
 
+
 class GazeEstimationModel:
     '''
     Class for the Gaze Estimation Model.
@@ -12,6 +13,7 @@ class GazeEstimationModel:
     and performs either synchronous or asynchronous modes for the
     specified infer requests.
     '''
+
     def __init__(self, model_name, device='CPU', extensions=None, async_infer=True):
         '''
         Set instance variables.
@@ -30,8 +32,6 @@ class GazeEstimationModel:
         self.device = device
         self.extensions = extensions
         self.async_infer = async_infer
-
-
 
     def load_model(self):
         '''
@@ -52,7 +52,7 @@ class GazeEstimationModel:
 
         # Read the IR as IENetwork
         try:
-            self.network = self.plugin.read_network(model = model_structure, weights = model_weights)
+            self.network = self.plugin.read_network(model=model_structure, weights=model_weights)
         except:
             raise ValueError("Could not initialise the network. Have you entered the correct model path?")
 
@@ -60,7 +60,7 @@ class GazeEstimationModel:
         self.check_model()
 
         # Load the IENetwork into the plugin
-        self.exec_network = self.plugin.load_network(network = self.network, device_name = self.device, num_requests = 1)
+        self.exec_network = self.plugin.load_network(network=self.network, device_name=self.device, num_requests=1)
 
         # Get the input and output layers
         self.input_blob = [key for key in self.network.inputs.keys()]
@@ -85,15 +85,20 @@ class GazeEstimationModel:
 
             # Start inference. Infer mode (async/sync) is input by user
             if self.async_infer:
-                self.infer_request_handle = self.exec_network.start_async(request_id = 0, inputs = net_input)
+                self.infer_request_handle = self.exec_network.start_async(request_id=0, inputs=net_input)
+                # Wait for the result of the inference
+                if self.exec_network.requests[0].wait(-1) == 0:
+                    # Get result of the inference request
+                    outputs = self.infer_request_handle.outputs[self.output_blob]
             else:
-                self.infer_request_handle = self.exec_network.infer(inputs = net_input)
+                self.infer_request_handle = self.exec_network.infer(inputs=net_input)
+                # Wait for the result of the inference
+                if self.exec_network.requests[0].wait(-1) == 0:
+                    # Get result of the inference request
+                    outputs = self.infer_request_handle[self.output_blob]
 
-            # # Wait for the result of the inference
-            if self.exec_network.requests[0].wait(-1) == 0:
-                # Get result of the inference request
-                outputs = self.infer_request_handle.outputs[self.output_blob]
-                gaze = self.preprocess_output(outputs)
+            gaze = self.preprocess_output(outputs)
+
         else:
             gaze = []
 
@@ -113,7 +118,8 @@ class GazeEstimationModel:
             if self.extensions:
                 log.error("The extensions specified do not support some layers. Please specify a new extension.")
             else:
-                log.error("Please try to specify an extension library path by using the --extensions command line argument.")
+                log.error(
+                    "Please try to specify an extension library path by using the --extensions command line argument.")
             sys.exit(1)
         return
 
@@ -135,4 +141,3 @@ class GazeEstimationModel:
         gaze = outputs[0]
 
         return gaze
-

@@ -33,7 +33,8 @@ class MouseController:
         new_pos = (current_pos[0] + rel_x, current_pos[1] + rel_y)  # new potential position
 
         # If the new position is still inside the screen, move the pointer
-        # If only one of the new coordinates position, move just along that coordinate axsis
+        # If only one of the new coordinates position is inside screen,
+        # move just along that coordinate axis.
         # Otherwise don't move
         if pyautogui.onScreen(new_pos):
             pyautogui.moveRel(rel_x, rel_y, duration=self.speed)

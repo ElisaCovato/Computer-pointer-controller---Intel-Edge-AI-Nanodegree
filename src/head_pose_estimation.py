@@ -78,14 +78,19 @@ class HeadPoseEstimationModel:
         # Start inference. Infer mode (async/sync) is input by user
         if self.async_infer:
             self.infer_request_handle = self.exec_network.start_async(request_id = 0, inputs = net_input)
+            # Wait for the result of the inference
+            if self.exec_network.requests[0].wait(-1) == 0:
+                # Get result of the inference request
+                outputs = self.infer_request_handle.outputs
         else:
             self.infer_request_handle = self.exec_network.infer(inputs = net_input)
+            # Wait for the result of the inference
+            if self.exec_network.requests[0].wait(-1) == 0:
+                # Get result of the inference request
+                outputs = self.infer_request_handle
 
-        # Wait for the result of the inference
-        if self.exec_network.requests[0].wait(-1) == 0:
-            # Get result of the inference request
-            outputs = self.infer_request_handle.outputs
-            pose_angles = self.preprocess_output(outputs)
+
+        pose_angles = self.preprocess_output(outputs)
 
         return pose_angles
 

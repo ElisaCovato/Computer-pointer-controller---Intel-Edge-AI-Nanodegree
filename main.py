@@ -2,7 +2,7 @@ import os
 import cv2
 import sys
 import logging as log
-import numpy as np
+import time
 from argparse import ArgumentParser
 from src.mouse_controller import MouseController
 from src.input_feeder import InputFeeder
@@ -50,8 +50,10 @@ def build_argparser():
     parser.add_argument("-d", "--device", type=str, default='CPU',
                         help="Specify the target device to infer on: "
                              "CPU, GPU, FPGA or MYRIAD is acceptable")
-    parser.add_argument("-a", "--async_mode", type=str, default=True,
-                        help="Specify the inference type. True for asynchronous, false for synchronous.")
+    parser.add_argument("-s", "--sync_mode", action='store_true',
+                        help="Add this flag to specify synchronous inference. Default false: "
+                             "Asynchronous inference will be performed.")
+
 
     return parser
 
@@ -60,7 +62,7 @@ def main():
     # Grab command line arguments
     global preview
     args = build_argparser().parse_args()
-
+    print(args.sync_mode)
     # Get input
     input_path = args.input
     flip = False
@@ -88,29 +90,39 @@ def main():
             log.error("Unable to find specified '" + models[model].split('/')[-1] + "' model")
             sys.exit(1)
 
+    start_models_load_time = time.time()
     # Load models
+    if args.sync_mode:
+        # If synchronous mode is specified, set async_mode to false
+        async_mode = False
+    else:
+        async_mode = True
+
     fm = FaceDetectionModel(model_name=models['FM'],
                             prob_threshold=args.prob_threshold,
                             device=args.device,
                             extensions=args.extensions,
-                            async_infer=args.async_mode)
+                            async_infer=async_mode)
     lm = LandmarksDetectionModel(model_name=models['LM'],
                                  device=args.device,
                                  extensions=args.extensions,
-                                 async_infer=args.async_mode)
+                                 async_infer=async_mode)
     pm = HeadPoseEstimationModel(model_name=models['PM'],
                                  device=args.device,
                                  extensions=args.extensions,
-                                 async_infer=args.async_mode)
+                                 async_infer=async_mode)
     gm = GazeEstimationModel(model_name=models['GM'],
                              device=args.device,
                              extensions=args.extensions,
-                             async_infer=args.async_mode)
+                             async_infer=async_mode)
 
     fm.load_model()
     lm.load_model()
     pm.load_model()
     gm.load_model()
+
+    total_models_load_time = time.time() - start_models_load_time
+    print("Total models load time: ", total_models_load_time, "ms")
 
     # Check preview flags
     if len(args.flags_preview) != 0:
