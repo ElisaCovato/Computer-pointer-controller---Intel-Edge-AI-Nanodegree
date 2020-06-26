@@ -97,12 +97,12 @@ def main():
         async_mode = False
     else:
         async_mode = True
-
     fm = FaceDetectionModel(model_name=models['FM'],
                             prob_threshold=args.prob_threshold,
                             device=args.device,
                             extensions=args.extensions,
                             async_infer=async_mode)
+
     lm = LandmarksDetectionModel(model_name=models['LM'],
                                  device=args.device,
                                  extensions=args.extensions,
@@ -117,9 +117,9 @@ def main():
                              async_infer=async_mode)
 
     fm.load_model()
-    lm.load_model()
-    pm.load_model()
-    gm.load_model()
+    lm.load_model(plugin=fm.plugin)
+    pm.load_model(plugin=fm.plugin)
+    gm.load_model(plugin=fm.plugin)
 
     total_models_load_time = time.time() - start_models_load_time
     print("Model loading time:", round(total_models_load_time, 2), "s")
@@ -136,6 +136,7 @@ def main():
     # out = cv2.VideoWriter("test.mp4", cv2.VideoWriter_fourcc(*"MP4V"), 30,  (1920, 1080), True)
 
     counter = 0
+    start_total_infer_time = time.time()
     # Start inference
     try:
         for frame in feed.next_batch():
@@ -238,6 +239,11 @@ def main():
         log.warning("VideoStream ended...")
         cv2.destroyAllWindows()
         feed.close()
+
+        total_infer_time = time.time() - start_total_infer_time
+        fps = counter/total_infer_time
+        print("Total infer time:", round(total_infer_time,2), "s")
+        print("FPS:", round(fps, 2), "frames/s")
 
 
     except KeyboardInterrupt:

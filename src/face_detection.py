@@ -56,8 +56,9 @@ class FaceDetectionModel:
         except:
             raise ValueError("Could not initialise the network. Have you entered the correct model path?")
 
-        # Check if model and plugin are supported
-        self.check_model()
+        # Check if model and CPU plugin are supported
+        if self.device == 'CPU':
+            self.check_model()
 
         # Load the IENetwork into the plugin
         self.exec_network = self.plugin.load_network(network=self.network, device_name=self.device, num_requests=1)

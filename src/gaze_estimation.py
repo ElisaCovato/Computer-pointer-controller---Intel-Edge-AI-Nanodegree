@@ -33,7 +33,7 @@ class GazeEstimationModel:
         self.extensions = extensions
         self.async_infer = async_infer
 
-    def load_model(self):
+    def load_model(self, plugin):
         '''
         This method is for loading the model (in IR format) to the device specified by the user.
         Default device is CPU.
@@ -44,7 +44,8 @@ class GazeEstimationModel:
         model_weights = self.model_name + '.bin'
 
         # Initialize the plugin - load the inference engine API
-        self.plugin = IECore()
+        # Plugin is the one already created for the Face Detection model
+        self.plugin = plugin
 
         # Add a CPU extension, if applicable
         if self.extensions and 'CPU' in self.device:
@@ -56,8 +57,9 @@ class GazeEstimationModel:
         except:
             raise ValueError("Could not initialise the network. Have you entered the correct model path?")
 
-        # Check if model and plugin are supported
-        self.check_model()
+        # Check if model and CPU plugin are supported
+        if self.device == 'CPU':
+            self.check_model()
 
         # Load the IENetwork into the plugin
         self.exec_network = self.plugin.load_network(network=self.network, device_name=self.device, num_requests=1)

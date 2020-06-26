@@ -4,6 +4,7 @@ import sys
 import numpy as np
 from openvino.inference_engine import IECore
 
+
 class LandmarksDetectionModel:
     '''
     Class for the Face Landmarks Detection Model.
@@ -12,6 +13,7 @@ class LandmarksDetectionModel:
     and performs either synchronous or asynchronous modes for the
     specified infer requests.
     '''
+
     def __init__(self, model_name, device='CPU', extensions=None, async_infer=True):
         '''
         Set instance variables.
@@ -31,9 +33,7 @@ class LandmarksDetectionModel:
         self.extensions = extensions
         self.async_infer = async_infer
 
-
-
-    def load_model(self):
+    def load_model(self, plugin):
         '''
         This method is for loading the model (in IR format) to the device specified by the user.
         Default device is CPU.
@@ -44,7 +44,8 @@ class LandmarksDetectionModel:
         model_weights = self.model_name + '.bin'
 
         # Initialize the plugin - load the inference engine API
-        self.plugin = IECore()
+        # Plugin is the one already created for the Face Detection model
+        self.plugin = plugin
 
         # Add a CPU extension, if applicable
         if self.extensions and 'CPU' in self.device:
@@ -52,15 +53,16 @@ class LandmarksDetectionModel:
 
         # Read the IR as IENetwork
         try:
-            self.network = self.plugin.read_network(model = model_structure, weights = model_weights)
+            self.network = self.plugin.read_network(model=model_structure, weights=model_weights)
         except:
             raise ValueError("Could not initialise the network. Have you entered the correct model path?")
 
-        # Check if model and plugin are supported
-        self.check_model()
+        # Check if model and CPU plugin are supported
+        if self.device == 'CPU':
+            self.check_model()
 
         # Load the IENetwork into the plugin
-        self.exec_network = self.plugin.load_network(network = self.network, device_name = self.device, num_requests = 1)
+        self.exec_network = self.plugin.load_network(network=self.network, device_name=self.device, num_requests=1)
 
         # Get the input and output layers
         self.input_blob = next(iter(self.network.inputs))
@@ -79,18 +81,17 @@ class LandmarksDetectionModel:
 
             # Start inference. Infer mode (async/sync) is input by user
             if self.async_infer:
-                self.infer_request_handle = self.exec_network.start_async(request_id = 0, inputs = net_input)
+                self.infer_request_handle = self.exec_network.start_async(request_id=0, inputs=net_input)
                 # Wait for the result of the inference
                 if self.exec_network.requests[0].wait(-1) == 0:
                     # Get result of the inference request
                     outputs = self.infer_request_handle.outputs[self.output_blob]
             else:
-                self.infer_request_handle = self.exec_network.infer(inputs = net_input)
+                self.infer_request_handle = self.exec_network.infer(inputs=net_input)
                 # Wait for the result of the inference
                 if self.exec_network.requests[0].wait(-1) == 0:
                     # Get result of the inference request
                     outputs = self.infer_request_handle[self.output_blob]
-
 
             eyes_coords, crop_left, crop_right = self.preprocess_output(outputs, image)
 
@@ -115,7 +116,8 @@ class LandmarksDetectionModel:
             if self.extensions:
                 log.error("The extensions specified do not support some layers. Please specify a new extension.")
             else:
-                log.error("Please try to specify an extension library path by using the --extensions command line argument.")
+                log.error(
+                    "Please try to specify an extension library path by using the --extensions command line argument.")
             sys.exit(1)
         return
 
@@ -143,16 +145,13 @@ class LandmarksDetectionModel:
 
         eyes_coords = [xl, yl, xr, yr]
 
-
         # Using the fact that eyes take 1/5 of your face width
         # define bounding boxes around the eyes according to this
-        square_size = int(w/10)
+        square_size = int(w / 10)
         left_eye_box = [xl - square_size, yl - square_size, xl + square_size, yl + square_size]
         right_eye_box = [xr - square_size, yr - square_size, xr + square_size, yr + square_size]
-
 
         crop_left = image[left_eye_box[1]:left_eye_box[3], left_eye_box[0]:left_eye_box[2]]
         crop_right = image[right_eye_box[1]:right_eye_box[3], right_eye_box[0]:right_eye_box[2]]
 
         return eyes_coords, crop_left, crop_right
-
