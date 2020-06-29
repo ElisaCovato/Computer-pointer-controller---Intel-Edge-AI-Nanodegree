@@ -31,29 +31,32 @@ def build_argparser():
     parser.add_argument("-i", "--input", required=True, type=str,
                         help="Path to video file or image. Enter 'cam' for webcam stream.")
     parser.add_argument("-l", "--extensions", type=str, default=None,
-                        help="MKLDNN (CPU)-targeted custom layers."
+                        help="(Optional) MKLDNN (CPU)-targeted custom layers."
                              "Absolute path to a shared library with the"
                              "kernels impl")
     parser.add_argument("-prev", "--flags_preview", nargs="+", default=[],
-                        help="Show models detection outputs. Add 'fm' for face detection,"
+                        help="(Optional) Show models detection outputs. Add 'fm' for face detection,"
                              "lm for landmarks, pm for head pose, gm for gaze estimation,"
                              "vo for video only output without models detection output, "
                              "stats for displaying live inference time."
                              "Flags needs to be separated by space.")
     parser.add_argument("-m_prec", "--mouse_precision", type=str, default='high',
-                        help="Specify mouse precision (how much the mouse moves): 'high', 'medium', 'low'."
+                        help="(Optional) Specify mouse precision (how much the mouse moves): 'high', 'medium', 'low'."
                              "Default is high.")
     parser.add_argument("-m_speed", "--mouse_speed", type=str, default='immediate',
-                        help="Specify mouse speed (how many secs before it moves): 'immediate'(0s), 'fast'(0.1s),"
+                        help="(Optional) Specify mouse speed (how many secs before it moves): 'immediate'(0s), 'fast'(0.1s),"
                              "'medium'(0.5s) and 'slow'(1s). Default is immediate.")
     parser.add_argument("-prob", "--prob_threshold", type=float, default=0.5,
-                        help="Probability threshold for detection filtering (0.5 by default)")
+                        help="(Optional) Probability threshold for detection filtering (0.5 by default)")
     parser.add_argument("-d", "--device", type=str, default='CPU',
-                        help="Specify the target device to infer on: "
-                             "CPU, GPU, FPGA or MYRIAD is acceptable")
+                        help="(Optional) Specify the target device to infer on: "
+                             "CPU, GPU, FPGA or MYRIAD is acceptable. Default device is CPU.")
     parser.add_argument("-s", "--sync_mode", action='store_true',
-                        help="Add this flag to specify synchronous inference. Default false: "
+                        help="(Optional) Add this flag to specify synchronous inference. Default false: "
                              "Asynchronous inference will be performed.")
+    parser.add_argument("-o_stats", "--output_stats", type=str, default=None,
+                        help="(Optional) Specify output file where to print performance stats."
+                             "Example <output_directory_path>/<file name>.txt")
 
     return parser
 
@@ -121,8 +124,8 @@ def main():
     pm.load_model(plugin=fm.plugin)
     gm.load_model(plugin=fm.plugin)
 
-    total_models_load_time = time.time() - start_models_load_time
-    print("Model loading time:", round(total_models_load_time, 2), "s")
+    total_models_load_time = round(time.time() - start_models_load_time, 2)
+    print("Model loading time:", total_models_load_time, "s")
 
     # Check preview flags
     if len(args.flags_preview) != 0:
@@ -236,14 +239,29 @@ def main():
             if key_pressed == 27:
                 break
 
+        total_infer_time = round(time.time() - start_total_infer_time, 2)
+        fps = round(counter / total_infer_time, 2)
+        print("Total infer time:", total_infer_time, "s")
+        print("FPS:", fps, "frames/s")
+
         log.warning("VideoStream ended...")
         cv2.destroyAllWindows()
         feed.close()
 
-        total_infer_time = time.time() - start_total_infer_time
-        fps = counter/total_infer_time
-        print("Total infer time:", round(total_infer_time,2), "s")
-        print("FPS:", round(fps, 2), "frames/s")
+
+
+        # Print stats on text file as specified by user
+        if args.output_stats:
+            dir_path = args.output_stats.rsplit("/", 1)[0]
+            if not os.path.isfile(dir_path):
+                os.makedirs(dir_path)
+            with open(args.output_stats, 'w') as f:
+                f.write(str("Models loading time (s): ") + str(total_models_load_time) + '\n')
+                f.write(str("Total inference time (s): ") + str(total_infer_time) + '\n')
+                f.write(str("Frames per second: ") + str(fps) + '\n')
+
+
+
 
 
     except KeyboardInterrupt:

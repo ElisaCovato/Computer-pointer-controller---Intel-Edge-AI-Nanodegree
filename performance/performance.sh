@@ -1,7 +1,6 @@
 #!/bin/bash
 
-
-
+export PYTHONPATH="/opt/intel/openvino/python/python3.6"
 
 DEVICE=$1
 PRECISION=$2
@@ -22,6 +21,7 @@ else
     POSEMODELPATH=../models/intel/head-pose-estimation-adas-0001/FP16-INT8/head-pose-estimation-adas-0001
     LANDMARKSMODELPATH=../models/intel/landmarks-regression-retail-0009/FP16-INT8/landmarks-regression-retail-0009    
     GAZEMODELPATH=../models/intel/gaze-estimation-adas-0002/FP16-INT8/gaze-estimation-adas-0002
+fi
 
 python3 ../main.py -fm ${FACEMODELPATH} \
                 -pm ${POSEMODELPATH} \
