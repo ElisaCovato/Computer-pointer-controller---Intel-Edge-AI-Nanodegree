@@ -253,7 +253,7 @@ def main():
         # Print stats on text file as specified by user
         if args.output_stats:
             dir_path = args.output_stats.rsplit("/", 1)[0]
-            if not os.path.isfile(dir_path):
+            if os.path.exists(dir_path) is not True:
                 os.makedirs(dir_path)
             with open(args.output_stats, 'w') as f:
                 f.write(str("Models loading time (s): ") + str(total_models_load_time) + '\n')
