@@ -13,6 +13,7 @@ from src.head_pose_estimation import HeadPoseEstimationModel
 from src.facial_landmarks_detection import LandmarksDetectionModel
 
 
+
 def build_argparser():
     '''
     Parse command line arguments.
