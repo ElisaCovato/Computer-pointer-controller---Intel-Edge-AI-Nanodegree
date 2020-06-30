@@ -37,11 +37,11 @@ The mouse pointer is controlled using the Python library [PyAutoGui](https://pyp
 
 ## Project Set Up and Installation
 To run the application, stick to the following steps:
-##### Install Intel® Distribution of OpenVINO™ toolkit
+#### Install Intel® Distribution of OpenVINO™ toolkit
 
 Refer to the relevant instructions for the appropriate operating system [here](https://docs.openvinotoolkit.org/latest/index.html).
 
-##### Clone the directory and install dependencies
+#### Clone the directory and install dependencies
 Clone this directory:
 ```
 git clone https://github.com/ElisaCovato/Computer-pointer-controller---Intel-Edge-AI-Nanodegree.git
@@ -53,14 +53,14 @@ After cloning the directory, some python modules need to be installed. To do so,
 pip3 install -r requirements.txt
 ```
 
-##### Initialize OpenVino environments
+#### Initialize OpenVino environments
 Configure the build environment for the OpenVino toolkit by sourcing the `setupvars.sh` script:
 ```
 source /opt/intel/openvino/bin/setupvars.sh
 ```
 If successful, the terminal will prompt  `[setupvars.sh] OpenVINO environment initialized`.
 
-##### Download models
+#### Download models
 To download the models, run the `dowload_model.sh` bash script:
 ```
 bash download_model.sh
