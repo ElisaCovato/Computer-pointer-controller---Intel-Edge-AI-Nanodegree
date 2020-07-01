@@ -34,7 +34,7 @@ def build_argparser():
     parser.add_argument("-l", "--extensions", type=str, default=None,
                         help="(Optional) MKLDNN (CPU)-targeted custom layers."
                              "Absolute path to a shared library with the"
-                             "kernels impl")
+                             "kernels impl.")
     parser.add_argument("-prev", "--flags_preview", nargs="+", default=[],
                         help="(Optional) Show models detection outputs. Add 'fm' for face detection,"
                              "lm for landmarks, pm for head pose, gm for gaze estimation,"
