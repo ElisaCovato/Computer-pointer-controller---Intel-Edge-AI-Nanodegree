@@ -184,10 +184,94 @@ The application can run on different devices. It is possible to specify the targ
 
 To print on file some stats about the application, the user needs to pass a `.txt` file path to the `-o_stats` argument. Once the application finishes to run, it will print on the specified file model loading time, total inference time and frames per second. By default, the same statistics are printed on terminal while the application runs. 
 
-
+#### Project Directory Structure
+If all the setup steps have been followed correctly, the project directory will look like this:
+```commandline
+├── LICENSE
+├── README.md
+├── download_model.sh
+├── main.py
+├── media
+│   ├── data_flow.png
+│   ├── demo.mp4
+│   └── flags_preview.png
+├── models
+│   └── intel
+│       ├── face-detection-adas-0001
+│       │   ├── FP16
+│       │   │   ├── face-detection-adas-0001.bin
+│       │   │   └── face-detection-adas-0001.xml
+│       │   ├── FP16-INT8
+│       │   │   ├── face-detection-adas-0001.bin
+│       │   │   └── face-detection-adas-0001.xml
+│       │   └── FP32
+│       │       ├── face-detection-adas-0001.bin
+│       │       └── face-detection-adas-0001.xml
+│       ├── gaze-estimation-adas-0002
+│       │   ├── FP16
+│       │   │   ├── gaze-estimation-adas-0002.bin
+│       │   │   └── gaze-estimation-adas-0002.xml
+│       │   ├── FP16-INT8
+│       │   │   ├── gaze-estimation-adas-0002.bin
+│       │   │   └── gaze-estimation-adas-0002.xml
+│       │   └── FP32
+│       │       ├── gaze-estimation-adas-0002.bin
+│       │       └── gaze-estimation-adas-0002.xml
+│       ├── head-pose-estimation-adas-0001
+│       │   ├── FP16
+│       │   │   ├── head-pose-estimation-adas-0001.bin
+│       │   │   └── head-pose-estimation-adas-0001.xml
+│       │   ├── FP16-INT8
+│       │   │   ├── head-pose-estimation-adas-0001.bin
+│       │   │   └── head-pose-estimation-adas-0001.xml
+│       │   └── FP32
+│       │       ├── head-pose-estimation-adas-0001.bin
+│       │       └── head-pose-estimation-adas-0001.xml
+│       └── landmarks-regression-retail-0009
+│           ├── FP16
+│           │   ├── landmarks-regression-retail-0009.bin
+│           │   └── landmarks-regression-retail-0009.xml
+│           ├── FP16-INT8
+│           │   ├── landmarks-regression-retail-0009.bin
+│           │   └── landmarks-regression-retail-0009.xml
+│           └── FP32
+│               ├── landmarks-regression-retail-0009.bin
+│               └── landmarks-regression-retail-0009.xml
+├── performance
+│   ├── CPU
+│   │   ├── FP16.txt
+│   │   ├── FP32.txt
+│   │   └── INT8.txt
+│   ├── NCS2
+│   │   └── FP16.txt
+│   ├── check_performance.ipynb
+│   ├── cpu_performance.png
+│   └── ncs2_vs_cpu.png
+├── requirements.txt
+├── src
+   ├── face_detection.py
+   ├── facial_landmarks_detection.py
+   ├── gaze_estimation.py
+   ├── head_pose_estimation.py
+   ├── input_feeder.py
+   ├── mouse_controller.py
+   └── visualizer.py
+```
 
 ## Benchmarks
-*TODO:* Include the benchmark results of running your model on multiple hardwares and multiple model precisions. Your benchmarks can include: model loading time, input/output processing time, model inference time etc.
+The application has been tested on different devices and using different model precisions. For more details see this [Python notebook](./performance/check_performance.ipynb).
+
+In particular, testing the application on a **CPU** (Intel Core i5, 2.3 GHz ) using different model precision has produced the following values:
+
+![cpu_performance](./performance/cpu_performance.png)
+
+The precision used (FP32/FP16/INT8) was equivalent across the four models.
+
+On the other hand, the values obtained running it on a **VPU** (Neural Compute Stick 2) vs. CPU are as follow:
+
+![ncs2_vs_cpu](./performance/ncs2_vs_cpu.png) 
+
+Note that this has been tested using FP16 precision models for both NCS2 and CPU, since NCS2 only accepts FP16 models.
 
 ## Results
 *TODO:* Discuss the benchmark results and explain why you are getting the results you are getting. For instance, explain why there is difference in inference time for FP32, FP16 and INT8 models.
