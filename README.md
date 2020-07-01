@@ -274,7 +274,18 @@ On the other hand, the values obtained running it on a **VPU** (Neural Compute S
 Note that this has been tested using FP16 precision models for both NCS2 and CPU, since NCS2 only accepts FP16 models.
 
 ## Results
-*TODO:* Discuss the benchmark results and explain why you are getting the results you are getting. For instance, explain why there is difference in inference time for FP32, FP16 and INT8 models.
+The benchmark results above show clearly that using models with lower precision produces faster inference and less memory usage (more frames per second). 
+
+The results for FP32 and FP16 are very similar, and they overcome the results with INT8 precision models for the loading time.
+
+In terms of performance and accuracy, because face detection is a key information that we pass to the other three models, it would be recommended, when running the application on a CPU, to use a Face Detection model in Precision 32 bits and the other models in 16 bits. In the case of a VPU/NCS2 instead, 
+Using this model combination for the CPU, we would get:
+
+|Model Combination                      | Total inference time | Models loading time | Frames Per Second |
+| ------------------------------------- | ------------------- | -------------------- | ----------------- |
+| face-detection-adas - FP32<br>head-pose-estimation-adas - FP16<br>facial-landmarks-35-adas - FP16<br>gaze-estimation-adas - FP16|   24.24s |  0.67 | 24.57 fps |
+
+which is not very far from the benchmark results using all models either with FP32 or FP16 precision. Moreover, using models with lower precision takes up less memory footprint.
 
 ## Stand Out Suggestions
 This is where you can provide information about the stand out suggestions that you have attempted.
