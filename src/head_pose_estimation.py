@@ -83,15 +83,13 @@ class HeadPoseEstimationModel:
             if self.exec_network.requests[0].wait(-1) == 0:
                 # Get result of the inference request
                 outputs = self.infer_request_handle.outputs
+                pose_angles = self.preprocess_output(outputs)
+
         else:
             self.infer_request_handle = self.exec_network.infer(inputs = net_input)
-            # Wait for the result of the inference
-            if self.exec_network.requests[0].wait(-1) == 0:
-                # Get result of the inference request
-                outputs = self.infer_request_handle
-
-
-        pose_angles = self.preprocess_output(outputs)
+            # Get result of the inference request
+            outputs = self.infer_request_handle
+            pose_angles = self.preprocess_output(outputs)
 
         return pose_angles
 

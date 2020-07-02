@@ -85,14 +85,13 @@ class LandmarksDetectionModel:
                 if self.exec_network.requests[0].wait(-1) == 0:
                     # Get result of the inference request
                     outputs = self.infer_request_handle.outputs[self.output_blob]
+                    eyes_coords, crop_left, crop_right = self.preprocess_output(outputs, image)
+
             else:
                 self.infer_request_handle = self.exec_network.infer(inputs=net_input)
-                # Wait for the result of the inference
-                if self.exec_network.requests[0].wait(-1) == 0:
-                    # Get result of the inference request
-                    outputs = self.infer_request_handle[self.output_blob]
-
-            eyes_coords, crop_left, crop_right = self.preprocess_output(outputs, image)
+                # Get result of the inference request
+                outputs = self.infer_request_handle[self.output_blob]
+                eyes_coords, crop_left, crop_right = self.preprocess_output(outputs, image)
 
         else:
             eyes_coords = []
