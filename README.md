@@ -1,6 +1,8 @@
 # Computer Pointer Controller
 Project 3 of the **Intel® Edge AI for IoT Developers** Nanodegree Program.
 
+<img src="./media/mouse_pointer_demo.gif" alt="Computer Pointer Controller demo">
+
 ### The project
 The aim of the project is to develop an application that allows users to control the mouse pointer of their computers using their **eyes gaze**, captured through a webcam or a video file.
 
