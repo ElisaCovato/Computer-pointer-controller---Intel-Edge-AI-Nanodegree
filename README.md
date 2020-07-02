@@ -48,7 +48,6 @@ Clone this directory:
 ```
 git clone https://github.com/ElisaCovato/Computer-pointer-controller---Intel-Edge-AI-Nanodegree.git
 ```
-The project directory contains a `media` folder which has a demo.mp4 file, that  can be used as input for the project. The `src` folder contains all the python scripts necessary to make `main.py` work. The `performance` folder contains some analysis on the application performance using different devices and/or different model precisions.
 
 After cloning the directory, some python modules need to be installed. To do so, run :
 ```
@@ -188,6 +187,10 @@ If all the setup steps have been followed correctly, the project directory will 
    └── visualizer.py
 ```
 
+The project directory contains a `media` folder which has a demo.mp4 file, that  can be used as input for the project.  The `performance` folder contains some analysis on the application performance using different devices and/or different model precisions.
+
+The `src` folder contains all the python scripts necessary to make `main.py` work: there is a script for each model used within the application; `input_feeder.py` handles the video and webcam inputs; the functions to control the mouse pointer are in `mouse_controller.py`; `visualizer.py` handles the preview for each of the models' outputs.
+
 
 #### Command line arguments
 To get a description of all the command lines that can be used, run:
@@ -252,7 +255,7 @@ optional arguments:
                         performance stats.Example
                         <output_directory_path>/<file name>.txt
 ```
-**Model** and **input** paths are **required**. Note that it will suffices to insert the path of the model and the name without specifying the `.xml` or `.bin` extension, e.g. `./models/intel/face-detection-adas-0001/FP16/face-detection-adas-0001`. For the input, the user can either specify a _video file_ path or `CAM` to use the webcam feed to move the pointer.
+**Model** and **input** paths are **required**. Note that it will suffices to insert the path of the model and the name without specifying the `.xml` or `.bin` extension, e.g. `./models/intel/face-detection-adas-0001/FP16/face-detection-adas-0001`. For the input, the user can either specify a _video file_ path or `cam` to use the webcam feed to move the pointer.
 
 The user can also preview the video/webcam feed on a window, either only the feed or with one or more of the outputs of intermediate models. To do so, it will suffices to use the `-prev` argument followed by the chosen option(s) as detailed above. For example, using all the preview flag options, the video output will be like this:
 
